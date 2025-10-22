@@ -1,99 +1,153 @@
 const Product = require("../models/Product");
+const Category = require("../models/Category");
+const Subcategory = require("../models/Subcategory");
 const { uploadFile } = require("../services/mediaService");
+const slugify = require("slugify");
 
-// Create product
+// ✅ CREATE Product
 const createProduct = async (req, res) => {
   try {
-    const { name, slug, description, price, category, subcategory } = req.body;
-    let imageUrls = [];
+    const { name, description, category, subcategory } = req.body;
 
-    if (req.files) {
-      for (const file of req.files) {
-        const url = await uploadFile(file.buffer, file.originalname);
-        imageUrls.push(url);
-      }
+    if (!name || !category) {
+      return res.status(400).json({ success: false, message: "Product name and category are required" });
+    }
+
+    // Check valid category/subcategory
+    const categoryExists = await Category.findById(category);
+    if (!categoryExists)
+      return res.status(404).json({ success: false, message: "Invalid category ID" });
+
+    if (subcategory) {
+      const subcatExists = await Subcategory.findById(subcategory);
+      if (!subcatExists)
+        return res.status(404).json({ success: false, message: "Invalid subcategory ID" });
+    }
+
+    // Slug
+    const slug = slugify(name, { lower: true, strict: true });
+
+    // Prevent duplicate
+    const existing = await Product.findOne({ slug });
+    if (existing)
+      return res.status(400).json({ success: false, message: "Product already exists" });
+
+    // Upload main image
+    let imageUrl = null;
+    if (req.file) {
+      imageUrl = await uploadFile(req.file.buffer, req.file.originalname);
     }
 
     const product = await Product.create({
       name,
       slug,
       description,
-      price,
       category,
       subcategory,
-      images: imageUrls,
+      image: imageUrl,
     });
 
-    res.status(201).json(product);
+    res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      data: product,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error creating product:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Get all products
+// ✅ GET ALL Products
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find().populate("category subcategory").lean();
-    res.json(products);
+    const products = await Product.find()
+      .populate("category", "name")
+      .populate("subcategory", "name")
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      message: "Products fetched successfully",
+      data: products,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error fetching products:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Get product by slug
+// ✅ GET Product by slug
 const getProductBySlug = async (req, res) => {
   try {
-    const product = await Product.findOne({ slug: req.params.slug }).populate("category subcategory").lean();
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    res.json(product);
+    const product = await Product.findOne({ slug: req.params.slug })
+      .populate("category", "name")
+      .populate("subcategory", "name")
+      .lean();
+
+    if (!product)
+      return res.status(404).json({ success: false, message: "Product not found" });
+
+    res.status(200).json({
+      success: true,
+      message: "Product fetched successfully",
+      data: product,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error fetching product:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Update product
+// ✅ UPDATE Product
 const updateProduct = async (req, res) => {
   try {
-    const { name, slug, description, price, category, subcategory } = req.body;
+    const { name, description, category, subcategory } = req.body;
+
     const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (!product)
+      return res.status(404).json({ success: false, message: "Product not found" });
+
+    if (name && name !== product.name) {
+      product.slug = slugify(name, { lower: true, strict: true });
+    }
 
     product.name = name || product.name;
-    product.slug = slug || product.slug;
     product.description = description || product.description;
-    product.price = price || product.price;
     product.category = category || product.category;
     product.subcategory = subcategory || product.subcategory;
 
-    if (req.files) {
-      const imageUrls = [];
-      for (const file of req.files) {
-        const url = await uploadFile(file.buffer, file.originalname);
-        imageUrls.push(url);
-      }
-      product.images = imageUrls;
+    if (req.file) {
+      product.image = await uploadFile(req.file.buffer, req.file.originalname);
     }
 
     await product.save();
-    res.json(product);
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      data: product,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error updating product:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Delete product
+// ✅ DELETE Product
 const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    res.json({ message: "Product deleted successfully" });
+    if (!product)
+      return res.status(404).json({ success: false, message: "Product not found" });
+
+    res.status(200).json({
+      success: true,
+      message: "Product deleted successfully",
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error deleting product:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 

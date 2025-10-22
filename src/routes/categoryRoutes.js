@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../middlewares/uploadMiddleware");
+const adminAuth = require("../middlewares/adminAuth");
 const {
   createCategory,
   getCategories,
@@ -9,10 +10,10 @@ const {
   deleteCategory,
 } = require("../controllers/categoryController");
 
-router.post("/", upload.single("image"), createCategory);
+router.post("/", adminAuth, upload.single("image"), createCategory);
 router.get("/", getCategories);
 router.get("/:slug", getCategoryBySlug);
-router.put("/:id", upload.single("image"), updateCategory);
-router.delete("/:id", deleteCategory);
+router.put("/:id",adminAuth, upload.single("image"), updateCategory);
+router.delete("/:id", adminAuth, deleteCategory);
 
 module.exports = router;

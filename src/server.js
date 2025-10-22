@@ -6,6 +6,10 @@ const connectDB = require("./config/db");
 const categoryRoutes = require("./routes/categoryRoutes");
 const subcategoryRoutes = require("./routes/subcategoryRoutes");
 const productRoutes = require("./routes/productRoutes");
+const variantRoutes = require("./routes/variantRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+
+
 
 const app = express();
 
@@ -18,6 +22,13 @@ app.use(helmet()); // Add security headers
 app.use("/api/categories", categoryRoutes);
 app.use("/api/subcategories", subcategoryRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/products", variantRoutes);
+app.use("/api/admin", adminRoutes);
+
+
+
+
+
 
 // ✅ Connect DB and start server
 connectDB();
