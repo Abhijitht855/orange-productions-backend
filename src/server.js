@@ -8,6 +8,7 @@ const subcategoryRoutes = require("./routes/subcategoryRoutes");
 const productRoutes = require("./routes/productRoutes");
 const variantRoutes = require("./routes/variantRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const inquiryRoutes = require("./routes/inquiryRoutes");
 
 
 
@@ -24,6 +25,7 @@ app.use("/api/subcategories", subcategoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/products", variantRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/inquiries", inquiryRoutes);
 
 
 
