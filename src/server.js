@@ -23,7 +23,7 @@ app.use(helmet()); // Add security headers
 app.use("/api/categories", categoryRoutes);
 app.use("/api/subcategories", subcategoryRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/products", variantRoutes);
+app.use("/api/", variantRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 

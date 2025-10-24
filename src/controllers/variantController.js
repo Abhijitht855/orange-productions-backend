@@ -1,140 +1,164 @@
 const Product = require("../models/Product");
 const { uploadFile } = require("../services/mediaService");
 
-// ✅ Create a Variant
+// ✅ Create Variant
 const createVariant = async (req, res) => {
   try {
-    const { productId } = req.params;
-    const { name, about, size, color, material, extraOptions } = req.body;
+    const { productId, name, about, guideline, optionGroups } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ success: false, message: "Variant name is required" });
+    if (!productId || !name || !about) {
+      return res.status(400).json({
+        success: false,
+        message: "productId, name, and about are required",
+      });
     }
 
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+    // Get product with category & subcategory populated
+    const product = await Product.findById(productId)
+      .populate("category", "_id name")
+      .populate("subcategory", "_id name");
+
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+
+    // Upload images
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: "At least one image is required" });
     }
 
-    // Upload multiple images
-    let imageUrls = [];
-    if (req.files && req.files.length > 0) {
-      imageUrls = await Promise.all(
-        req.files.map(file => uploadFile(file.buffer, file.originalname))
-      );
-    }
+    const imageUrls = await Promise.all(req.files.map(file => uploadFile(file.buffer, file.originalname)));
 
     const variant = {
       name,
       about,
       images: imageUrls,
-      size,
-      color,
-      material,
-      extraOptions: extraOptions ? JSON.parse(extraOptions) : [],
+      guideline: guideline || "",
+      optionGroups: optionGroups ? JSON.parse(optionGroups) : [],
     };
 
     product.variants.push(variant);
     await product.save();
 
-    res.status(201).json({
-      success: true,
-      message: "Variant added successfully",
-      data: product.variants[product.variants.length - 1],
-    });
+    const response = {
+      ...product.variants[product.variants.length - 1]._doc,
+      product: { id: product._id, name: product.name },
+      category: { id: product.category._id, name: product.category.name },
+      subcategory: { id: product.subcategory._id, name: product.subcategory.name },
+    };
+
+    res.status(201).json({ success: true, message: "Variant created successfully", data: response });
   } catch (err) {
     console.error("Error creating variant:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ✅ Get all Variants of a Product
-const getVariants = async (req, res) => {
+// ✅ Get all variants for a product
+const getVariantsByProduct = async (req, res) => {
   try {
     const { productId } = req.params;
+    if (!productId) return res.status(400).json({ success: false, message: "productId is required" });
 
-    const product = await Product.findById(productId).lean();
-    if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
-    }
+    const product = await Product.findById(productId)
+      .populate("category", "_id name")
+      .populate("subcategory", "_id name")
+      .lean();
 
-    res.status(200).json({
-      success: true,
-      message: "Variants fetched successfully",
-      data: product.variants,
-    });
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+
+    const variants = product.variants.map(v => ({
+      ...v,
+      product: { id: product._id, name: product.name },
+      category: { id: product.category._id, name: product.category.name },
+      subcategory: { id: product.subcategory._id, name: product.subcategory.name },
+    }));
+
+    res.status(200).json({ success: true, data: variants });
   } catch (err) {
     console.error("Error fetching variants:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ✅ Get Single Variant
-const getVariantById = async (req, res) => {
+// ✅ Get all variants across all products
+const getAllVariants = async (req, res) => {
   try {
-    const { productId, variantId } = req.params;
+    const products = await Product.find()
+      .populate("category", "_id name")
+      .populate("subcategory", "_id name")
+      .lean();
 
-    const product = await Product.findById(productId).lean();
-    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    const allVariants = [];
+    products.forEach(product => {
+      const variants = product.variants.map(v => ({
+        ...v,
+        product: { id: product._id, name: product.name },
+        category: { id: product.category._id, name: product.category.name },
+        subcategory: { id: product.subcategory._id, name: product.subcategory.name },
+      }));
+      allVariants.push(...variants);
+    });
 
-    const variant = product.variants.find(v => v._id.toString() === variantId);
-    if (!variant) return res.status(404).json({ success: false, message: "Variant not found" });
-
-    res.status(200).json({ success: true, data: variant });
+    res.status(200).json({ success: true, data: allVariants });
   } catch (err) {
-    console.error("Error fetching variant:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error fetching all variants:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 // ✅ Update Variant
 const updateVariant = async (req, res) => {
   try {
-    const { productId, variantId } = req.params;
-    const { name, about, size, color, material, extraOptions } = req.body;
+    const { variantId } = req.params;
+    const { productId, name, about, guideline, optionGroups } = req.body;
 
-    const product = await Product.findById(productId);
+    if (!productId || !variantId) return res.status(400).json({ success: false, message: "productId and variantId are required" });
+
+    const product = await Product.findById(productId)
+      .populate("category", "_id name")
+      .populate("subcategory", "_id name");
+
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
     const variant = product.variants.id(variantId);
     if (!variant) return res.status(404).json({ success: false, message: "Variant not found" });
 
-    // Upload new images if provided
-    let imageUrls = variant.images;
-    if (req.files && req.files.length > 0) {
-      imageUrls = await Promise.all(
-        req.files.map(file => uploadFile(file.buffer, file.originalname))
-      );
-    }
+    if (name) variant.name = name;
+    if (about) variant.about = about;
+    if (guideline) variant.guideline = guideline;
+    if (optionGroups) variant.optionGroups = JSON.parse(optionGroups);
 
-    // Update fields
-    variant.name = name || variant.name;
-    variant.about = about || variant.about;
-    variant.images = imageUrls;
-    variant.size = size || variant.size;
-    variant.color = color || variant.color;
-    variant.material = material || variant.material;
-    variant.extraOptions = extraOptions ? JSON.parse(extraOptions) : variant.extraOptions;
+    if (req.files && req.files.length > 0) {
+      variant.images = await Promise.all(req.files.map(file => uploadFile(file.buffer, file.originalname)));
+    }
 
     await product.save();
 
-    res.status(200).json({
-      success: true,
-      message: "Variant updated successfully",
-      data: variant,
-    });
+    const response = {
+      ...variant._doc,
+      product: { id: product._id, name: product.name },
+      category: { id: product.category._id, name: product.category.name },
+      subcategory: { id: product.subcategory._id, name: product.subcategory.name },
+    };
+
+    res.status(200).json({ success: true, message: "Variant updated successfully", data: response });
   } catch (err) {
     console.error("Error updating variant:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 // ✅ Delete Variant
 const deleteVariant = async (req, res) => {
   try {
-    const { productId, variantId } = req.params;
+    const { variantId } = req.params;
+    const { productId } = req.body;
 
-    const product = await Product.findById(productId);
+    if (!productId || !variantId) return res.status(400).json({ success: false, message: "productId and variantId are required" });
+
+    const product = await Product.findById(productId)
+      .populate("category", "_id name")
+      .populate("subcategory", "_id name");
+
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
 
     const variant = product.variants.id(variantId);
@@ -146,17 +170,20 @@ const deleteVariant = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Variant deleted successfully",
+      product: { id: product._id, name: product.name },
+      category: { id: product.category._id, name: product.category.name },
+      subcategory: { id: product.subcategory._id, name: product.subcategory.name },
     });
   } catch (err) {
     console.error("Error deleting variant:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 module.exports = {
   createVariant,
-  getVariants,
-  getVariantById,
+  getVariantsByProduct,
+  getAllVariants,
   updateVariant,
   deleteVariant,
 };
