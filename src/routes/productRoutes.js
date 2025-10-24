@@ -8,6 +8,7 @@ const {
   getProductBySlug,
   updateProduct,
   deleteProduct,
+  getProductsBySubcategory,
 } = require("../controllers/productController");
 
 router.post("/", adminAuth, upload.single("image"), createProduct);
@@ -15,5 +16,12 @@ router.get("/", getProducts);
 router.get("/:slug", getProductBySlug);
 router.put("/:id", adminAuth, upload.single("image"), updateProduct);
 router.delete("/:id", adminAuth, deleteProduct);
+
+router.get("/subcategory/:slug", getProductsBySubcategory);
+
+
+// Mount variants router under a product by ID
+const variantRouter = require("./variantRoutes");
+router.use("/:productId/variants", variantRouter);
 
 module.exports = router;

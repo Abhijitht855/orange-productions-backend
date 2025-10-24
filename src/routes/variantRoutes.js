@@ -18,31 +18,47 @@
 // router.delete("/:productId/variants/:variantId",adminAuth, deleteVariant);
 
 // module.exports = router;
+// routes/variantRoutes.js
 const express = require("express");
-const router = express.Router();
+// mergeParams allows this router to access :productId from the parent mount
+const router = express.Router({ mergeParams: true });
 const upload = require("../middlewares/uploadMiddleware");
 const adminAuth = require("../middlewares/adminAuth");
+
 const {
   createVariant,
-  getVariantsByProduct,
-  getAllVariants,
+  getVariants,
+  getVariantBySlug,
   updateVariant,
   deleteVariant,
 } = require("../controllers/variantController");
 
-// Create Variant
-router.post("/variant", adminAuth, upload.array("images"), createVariant);
+// Create variant (images: single or multiple)
+// If your uploadMiddleware exposes both single and array handlers,
+// you can create a dedicated middleware. Otherwise use `any()` and
+// let the controller read req.file or req.files.
+router.post(
+  "/",
+  adminAuth,
+  upload.any(), // supports multiple images fields [web:88][web:81]
+  createVariant
+);
 
-// Get all variants for a product
-router.get("/variants/product/:productId", getVariantsByProduct);
+// List variants for a product
+router.get("/", getVariants);
 
-// Get all variants across all products
-router.get("/variants", getAllVariants);
+// Get variant by slug
+router.get("/:variantSlug", getVariantBySlug);
 
-// Update Variant
-router.put("/variant/:variantId", adminAuth, upload.array("images"), updateVariant);
+// Update a variant (by variantId)
+router.put(
+  "/:variantId",
+  adminAuth,
+  upload.any(), // allow replacing images [web:88]
+  updateVariant
+);
 
-// Delete Variant
-router.delete("/variant/:variantId", adminAuth, deleteVariant);
+// Delete a variant
+router.delete("/:variantId", adminAuth, deleteVariant);
 
 module.exports = router;
