@@ -26,6 +26,9 @@ app.use("/api/variants", variantRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 
+app.get("/", (req, res) => {
+  res.send("🚀 API is running successfully!");
+});
 
 // ✅ Connect DB and start server
 connectDB();
