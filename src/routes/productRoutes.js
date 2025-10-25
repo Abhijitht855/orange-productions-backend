@@ -17,7 +17,6 @@ router.get("/:slug", getProductBySlug);
 router.put("/:id", adminAuth, upload.single("image"), updateProduct);
 router.delete("/:id", adminAuth, deleteProduct);
 
-router.get("/subcategory/:slug", getProductsBySubcategory);
 
 
 // Mount variants router under a product by ID

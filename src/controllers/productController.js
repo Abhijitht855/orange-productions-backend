@@ -180,33 +180,6 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-// ✅ GET Products by Subcategory ID or Slug
-const getProductsBySubcategory = async (req, res) => {
-  try {
-    const { slug } = req.params;
-
-    // Find subcategory by slug
-    const subcategory = await Subcategory.findOne({ slug });
-    if (!subcategory) {
-      return res.status(404).json({ success: false, message: "Subcategory not found" });
-    }
-
-    // Fetch products with that subcategory
-    const products = await Product.find({ subcategory: subcategory._id })
-      .populate("category", "name")
-      .populate("subcategory", "name")
-      .lean();
-
-    res.status(200).json({
-      success: true,
-      message: "Products fetched successfully",
-      data: products,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
 
 
 
@@ -216,5 +189,4 @@ module.exports = {
   getProductBySlug,
   updateProduct,
   deleteProduct,
-   getProductsBySubcategory,
 };
