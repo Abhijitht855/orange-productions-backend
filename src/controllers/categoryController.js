@@ -1,4 +1,6 @@
 const Category = require("../models/Category");
+const Product = require("../models/Product");
+const Subcategory = require("../models/Subcategory");
 const { uploadFile } = require("../services/mediaService");
 const slugify = require("slugify"); // ✅ install with: npm install slugify
 
@@ -104,21 +106,39 @@ const updateCategory = async (req, res) => {
   }
 };
 
-// Delete category
+
 const deleteCategory = async (req, res) => {
   try {
-    const category = await Category.findByIdAndDelete(req.params.id);
+    const category = await Category.findById(req.params.id);
     if (!category) {
       return res.status(404).json({ success: false, message: "Category not found" });
     }
 
+    // ✅ Find all subcategories belonging to this category
+    const subcategories = await Subcategory.find({ category: category._id });
+
+    for (const sub of subcategories) {
+      // ✅ Delete all products under each subcategory
+      await Product.deleteMany({ subcategory: sub._id });
+    }
+
+    // ✅ Delete all subcategories under this category
+    await Subcategory.deleteMany({ category: category._id });
+
+    // ✅ Delete the category itself
+    await Category.findByIdAndDelete(category._id);
+
     res.status(200).json({
       success: true,
-      message: "Category deleted successfully",
+      message:
+        "Category and all related subcategories and products deleted successfully",
     });
   } catch (err) {
     console.error("Error deleting category:", err);
-    res.status(500).json({ success: false, message: "Server error while deleting category" });
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting category",
+    });
   }
 };
 

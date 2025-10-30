@@ -2,6 +2,7 @@ const Subcategory = require("../models/Subcategory");
 const Category = require("../models/Category");
 const { uploadFile } = require("../services/mediaService");
 const slugify = require("slugify");
+const Product = require("../models/Product");
 
 // Create subcategory
 const createSubcategory = async (req, res) => {
@@ -142,19 +143,30 @@ const updateSubcategory = async (req, res) => {
 // Delete subcategory
 const deleteSubcategory = async (req, res) => {
   try {
-    const subcategory = await Subcategory.findByIdAndDelete(req.params.id);
-    if (!subcategory)
+    // Find the subcategory first
+    const subcategory = await Subcategory.findById(req.params.id);
+    if (!subcategory) {
       return res
         .status(404)
         .json({ success: false, message: "Subcategory not found" });
+    }
+
+    // ✅ Delete all products under this subcategory
+    await Product.deleteMany({ subcategory: subcategory._id });
+
+    // ✅ Delete the subcategory itself
+    await Subcategory.findByIdAndDelete(subcategory._id);
 
     res.status(200).json({
       success: true,
-      message: "Subcategory deleted successfully",
+      message: "Subcategory and all related products deleted successfully",
     });
   } catch (err) {
     console.error("Error deleting subcategory:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting subcategory",
+    });
   }
 };
 
