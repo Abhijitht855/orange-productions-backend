@@ -6,7 +6,6 @@ const createInquiry = async (req, res) => {
   try {
     const { name, email, phone, message, requiredItem } = req.body;
 
-    // Check required fields
     if (!name || !email || !requiredItem) {
       return res.status(400).json({
         success: false,
@@ -14,7 +13,6 @@ const createInquiry = async (req, res) => {
       });
     }
 
-    // Save inquiry in MongoDB
     const inquiry = await Inquiry.create({
       name,
       email,
@@ -23,21 +21,27 @@ const createInquiry = async (req, res) => {
       requiredItem,
     });
 
+    // Respond to user immediately ✅
+    res.status(201).json({
+      success: true,
+      message: "Inquiry submitted successfully. Admin will be notified by email.",
+      data: inquiry,
+    });
+
+    // ---- Send email asynchronously (non-blocking) ----
     const time = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
-    // ✅ Configure Nodemailer
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
-      secure: false, // true for port 465
+      secure: false,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
     });
 
-    // ✅ Email content to admin
-    const mailOptions = {
+        const mailOptions = {
       from: `"Orange Productions Inquiry" <${process.env.SMTP_USER}>`,
       to: process.env.ADMIN_EMAIL,
       subject: `📩 New Inquiry from ${name}`,
@@ -100,15 +104,9 @@ const createInquiry = async (req, res) => {
   `,
     };
 
-
-    // ✅ Send email
-    await transporter.sendMail(mailOptions);
-
-    res.status(201).json({
-      success: true,
-      message: "Inquiry submitted successfully. Admin notified by email.",
-      data: inquiry,
-    });
+    transporter.sendMail(mailOptions).catch((err) =>
+      console.error("❌ Email sending failed:", err.message)
+    );
   } catch (error) {
     console.error("❌ Error creating inquiry:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
