@@ -41,7 +41,7 @@ const createInquiry = async (req, res) => {
       },
     });
 
-        const mailOptions = {
+    const mailOptions = {
       from: `"Orange Productions Inquiry" <${process.env.SMTP_USER}>`,
       to: process.env.ADMIN_EMAIL,
       subject: `📩 New Inquiry from ${name}`,
