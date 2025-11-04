@@ -65,7 +65,7 @@ const getProducts = async (req, res) => {
     const products = await Product.find()
       .populate("category", "name")
       .populate("subcategory", "name")
-      .sort({ createdAt: 1 }) 
+      .sort({ createdAt: 1 })
       .lean();
 
     res.status(200).json({
@@ -100,6 +100,35 @@ const getProductBySlug = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// ✅ Get related products by subcategory
+const getRelatedProducts = async (req, res) => {
+  try {
+    const { subcategoryId, productId } = req.params;
+
+    // Fetch other products in the same subcategory, excluding current one
+    const related = await Product.find({
+      subcategory: subcategoryId,
+      _id: { $ne: productId },
+    })
+      .populate("category", "name")
+      .populate("subcategory", "name")
+      
+
+    res.status(200).json({
+      success: true,
+      message: "Related products fetched successfully",
+      data: related,
+    });
+  } catch (error) {
+    console.error("Error fetching related products:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching related products",
+    });
+  }
+};
+
 
 // ✅ UPDATE Product
 const updateProduct = async (req, res) => {
@@ -190,4 +219,5 @@ module.exports = {
   getProductBySlug,
   updateProduct,
   deleteProduct,
+  getRelatedProducts
 };

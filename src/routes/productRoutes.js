@@ -8,7 +8,7 @@ const {
   getProductBySlug,
   updateProduct,
   deleteProduct,
-  getProductsBySubcategory,
+  getRelatedProducts
 } = require("../controllers/productController");
 
 router.post("/", adminAuth, upload.single("image"), createProduct);
@@ -16,6 +16,7 @@ router.get("/", getProducts);
 router.get("/:slug", getProductBySlug);
 router.put("/:id", adminAuth, upload.single("image"), updateProduct);
 router.delete("/:id", adminAuth, deleteProduct);
+router.get("/related/:subcategoryId/:productId", getRelatedProducts);
 
 
 
