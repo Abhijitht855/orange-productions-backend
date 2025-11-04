@@ -65,6 +65,7 @@ const getProducts = async (req, res) => {
     const products = await Product.find()
       .populate("category", "name")
       .populate("subcategory", "name")
+      .sort({ createdAt: 1 }) 
       .lean();
 
     res.status(200).json({
