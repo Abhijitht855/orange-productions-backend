@@ -52,7 +52,6 @@
 //       .json({ success: false, message: "Search failed", error: error.message });
 //   }
 // };
-
 const Category = require("../models/Category");
 const Subcategory = require("../models/Subcategory");
 const Product = require("../models/Product");
@@ -68,7 +67,7 @@ exports.searchAll = async (req, res) => {
 
     const regex = new RegExp(query, "i");
 
-    // 🧠 Helper: Weighted Search
+    // 🧠 Weighted Search Helper
     const weightedSearch = (Model, extraMatch = {}, field = "name") =>
       Model.aggregate([
         { $match: { ...extraMatch, [field]: regex } },
@@ -80,15 +79,15 @@ exports.searchAll = async (req, res) => {
                   {
                     case: { $eq: [{ $toLower: `$${field}` }, query.toLowerCase()] },
                     then: 3,
-                  }, // exact match
+                  },
                   {
                     case: { $regexMatch: { input: `$${field}`, regex: new RegExp(`^${query}`, "i") } },
                     then: 2,
-                  }, // starts with
+                  },
                   {
                     case: { $regexMatch: { input: `$${field}`, regex: new RegExp(query, "i") } },
                     then: 1,
-                  }, // contains
+                  },
                 ],
                 default: 0,
               },
@@ -100,60 +99,40 @@ exports.searchAll = async (req, res) => {
       ]);
 
     // ✅ Main parallel searches
-    const [categories, subcategories, productsBase] = await Promise.all([
+    const [categories, subcategories] = await Promise.all([
       weightedSearch(Category),
       weightedSearch(Subcategory),
-      weightedSearch(Product),
     ]);
 
-    // ✅ Variant search inside products
-    const variantMatches = await Product.aggregate([
-      { $unwind: "$variants" },
-      { $match: { "variants.name": regex } },
-      {
-        $addFields: {
-          relevance: {
-            $switch: {
-              branches: [
-                {
-                  case: { $eq: [{ $toLower: "$variants.name" }, query.toLowerCase()] },
-                  then: 3,
-                },
-                {
-                  case: { $regexMatch: { input: "$variants.name", regex: new RegExp(`^${query}`, "i") } },
-                  then: 2,
-                },
-                {
-                  case: { $regexMatch: { input: "$variants.name", regex: new RegExp(query, "i") } },
-                  then: 1,
-                },
-              ],
-              default: 0,
-            },
-          },
+    // ✅ Product Search (populate subcategory + category)
+    const productsBase = await Product.find({
+      $or: [
+        { name: regex },
+        { "variants.name": regex },
+      ],
+    })
+      .populate({
+        path: "subcategory",
+        populate: {
+          path: "category",
+          select: "name slug",
         },
-      },
-      { $sort: { relevance: -1, "variants.name": 1 } },
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          slug: 1,
-          "variants.name": 1,
-          "variants.slug": 1,
-          "variants.images": 1,
-          "variants.price": 1,
-        },
-      },
-      { $limit: 10 },
-    ]);
+      })
+      .limit(20)
+      .lean();
 
-    // 🧩 Merge variant hits into products list (avoiding duplicates)
-    const productIds = new Set(productsBase.map((p) => p._id.toString()));
-    const mergedProducts = [
-      ...productsBase,
-      ...variantMatches.filter((v) => !productIds.has(v._id.toString())),
-    ];
+    // 🧩 Compute weighted relevance (same logic)
+    const addRelevance = (p) => {
+      const name = p.name.toLowerCase();
+      const q = query.toLowerCase();
+
+      if (name === q) return { ...p, relevance: 3 };
+      if (name.startsWith(q)) return { ...p, relevance: 2 };
+      if (name.includes(q)) return { ...p, relevance: 1 };
+      return { ...p, relevance: 0 };
+    };
+
+    const mergedProducts = productsBase.map(addRelevance).sort((a, b) => b.relevance - a.relevance);
 
     // ✅ Final Response
     res.status(200).json({
