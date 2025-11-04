@@ -42,7 +42,8 @@ const createCategory = async (req, res) => {
 // Get all categories
 const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().lean();
+    // Sort by createdAt ascending → first added shows first
+    const categories = await Category.find().sort({ createdAt: 1 }).lean();
     res.status(200).json({
       success: true,
       message: "Categories fetched successfully",
@@ -53,6 +54,7 @@ const getCategories = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error while fetching categories" });
   }
 };
+
 
 // Get category by slug
 const getCategoryBySlug = async (req, res) => {
