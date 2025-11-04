@@ -67,6 +67,7 @@ const getSubcategories = async (req, res) => {
   try {
     const subcategories = await Subcategory.find()
       .populate("category", "name slug")
+      .sort({ createdAt: 1 })
       .lean();
 
     res.status(200).json({
