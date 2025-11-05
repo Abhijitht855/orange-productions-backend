@@ -63,8 +63,8 @@ const createProduct = async (req, res) => {
 const getProducts = async (req, res) => {
   try {
     const products = await Product.find()
-      .populate("category", "name")
-      .populate("subcategory", "name")
+      .populate("category", "name slug")
+      .populate("subcategory", "name slug")
       .sort({ createdAt: 1 })
       .lean();
 
@@ -113,7 +113,7 @@ const getRelatedProducts = async (req, res) => {
     })
       .populate("category", "name")
       .populate("subcategory", "name")
-      
+
 
     res.status(200).json({
       success: true,
