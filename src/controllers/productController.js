@@ -111,8 +111,8 @@ const getRelatedProducts = async (req, res) => {
       subcategory: subcategoryId,
       _id: { $ne: productId },
     })
-      .populate("category", "name")
-      .populate("subcategory", "name")
+      .populate("category", "name slug")
+      .populate("subcategory", "name slug")
 
 
     res.status(200).json({
