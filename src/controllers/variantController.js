@@ -16,45 +16,72 @@ const createVariant = async (req, res) => {
     const { name, about, price, sizes, quantity } = req.body;
 
     if (!name || !about) {
-      return res.status(400).json({ success: false, message: "Variant name and about are required" });
-    }
-
-    // Handle variant images upload: accept single or multiple files
-    let images = [];
-    if (req.files && req.files.length > 0) {
-      // multiple files via multer array()
-      images = await Promise.all(
-        req.files.map(f => uploadFile(f.buffer, f.originalname))
-      );
-    } else if (req.file) {
-      // single file via multer single()
-      const url = await uploadFile(req.file.buffer, req.file.originalname);
-      images = [url];
-    }
-
-    if (!images.length) {
-      return res.status(400).json({ success: false, message: "Variant images are required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Variant name and about are required" });
     }
 
     const product = await Product.findById(productId);
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    // ✅ Separate handling for images and catalogue PDF
+    let images = [];
+    let catalogue = undefined;
+
+    if (req.files && req.files.length > 0) {
+      // Split files by mimetype
+      const imageFiles = req.files.filter(f => f.mimetype.startsWith("image/"));
+      const pdfFile = req.files.find(f => f.mimetype === "application/pdf");
+
+      // Upload images
+      if (imageFiles.length > 0) {
+        images = await Promise.all(
+          imageFiles.map(f => uploadFile(f.buffer, f.originalname))
+        );
+      }
+
+      // Upload catalogue PDF (if provided)
+      if (pdfFile) {
+        catalogue = await uploadFile(pdfFile.buffer, pdfFile.originalname);
+      }
+    } else if (req.file) {
+      // Single file (backward-compatible)
+      if (req.file.mimetype.startsWith("image/")) {
+        const url = await uploadFile(req.file.buffer, req.file.originalname);
+        images = [url];
+      } else if (req.file.mimetype === "application/pdf") {
+        catalogue = await uploadFile(req.file.buffer, req.file.originalname);
+      }
+    }
+
+    if (!images.length) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Variant images are required" });
     }
 
     const slug = makeVariantSlug(name);
     if (hasVariantSlug(product, slug)) {
-      return res.status(400).json({ success: false, message: "Variant with this slug already exists in this product" });
+      return res.status(400).json({
+        success: false,
+        message: "Variant with this slug already exists in this product",
+      });
     }
 
+    // ✅ Create variant object with catalogue support
     const variant = {
       name,
       about,
       images,
       slug,
-      // optional fields
       price: price ?? undefined,
       sizes: Array.isArray(sizes) ? sizes : sizes ? [sizes] : undefined,
       quantity: typeof quantity === "number" ? quantity : undefined,
+      catalogue, // <-- added
     };
 
     product.variants.push(variant);
@@ -68,9 +95,12 @@ const createVariant = async (req, res) => {
     });
   } catch (err) {
     console.error("Error creating variant:", err);
-    return res.status(500).json({ success: false, message: err.message });
+    return res
+      .status(500)
+      .json({ success: false, message: err.message });
   }
 };
+
 
 // ✅ GET ALL Variants for a Product
 const getVariants = async (req, res) => {
@@ -118,44 +148,74 @@ const getVariantBySlug = async (req, res) => {
 const updateVariant = async (req, res) => {
   try {
     const { productId, variantId } = req.params;
-    const { name, about, price, sizes, quantity } = req.body;
+    const { name, about, price, sizes, quantity, removeCatalogue } = req.body;
 
     const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    const variant = product.variants.id(variantId); // subdoc find helper
+    const variant = product.variants.id(variantId); // subdoc helper
     if (!variant) {
       return res.status(404).json({ success: false, message: "Variant not found" });
     }
 
-    // Optional: update images if files provided
+    // ✅ Handle files: separate images & catalogue PDF
     if (req.files && req.files.length > 0) {
-      const images = await Promise.all(
-        req.files.map(f => uploadFile(f.buffer, f.originalname))
-      );
-      variant.images = images;
+      const imageFiles = req.files.filter(f => f.mimetype.startsWith("image/"));
+      const pdfFile = req.files.find(f => f.mimetype === "application/pdf");
+
+      // Update images if provided
+      if (imageFiles.length > 0) {
+        const images = await Promise.all(
+          imageFiles.map(f => uploadFile(f.buffer, f.originalname))
+        );
+        variant.images = images;
+      }
+
+      // Update / Replace catalogue if PDF provided
+      if (pdfFile) {
+        const catalogueUrl = await uploadFile(pdfFile.buffer, pdfFile.originalname);
+        variant.catalogue = catalogueUrl;
+      }
     } else if (req.file) {
-      const url = await uploadFile(req.file.buffer, req.file.originalname);
-      variant.images = [url];
+      // Single file (backward compatibility)
+      if (req.file.mimetype.startsWith("image/")) {
+        const url = await uploadFile(req.file.buffer, req.file.originalname);
+        variant.images = [url];
+      } else if (req.file.mimetype === "application/pdf") {
+        const catalogueUrl = await uploadFile(req.file.buffer, req.file.originalname);
+        variant.catalogue = catalogueUrl;
+      }
     }
 
+    // ✅ Option to remove existing catalogue manually
+    if (removeCatalogue === "true") {
+      variant.catalogue = undefined;
+    }
+
+    // ✅ Update name & slug
     if (name && name !== variant.name) {
       const newSlug = makeVariantSlug(name);
       if (hasVariantSlug(product, newSlug, variantId)) {
-        return res.status(400).json({ success: false, message: "Another variant with this slug already exists in this product" });
+        return res.status(400).json({
+          success: false,
+          message: "Another variant with this slug already exists in this product",
+        });
       }
       variant.slug = newSlug;
       variant.name = name;
     }
 
+    // ✅ Update other optional fields
     if (about !== undefined) variant.about = about;
     if (price !== undefined) variant.price = price;
-    if (sizes !== undefined) variant.sizes = Array.isArray(sizes) ? sizes : sizes ? [sizes] : [];
+    if (sizes !== undefined)
+      variant.sizes = Array.isArray(sizes) ? sizes : sizes ? [sizes] : [];
     if (quantity !== undefined) variant.quantity = quantity;
 
-    await product.save(); // saves subdocs
+    await product.save(); // persist subdoc changes
+
     return res.status(200).json({
       success: true,
       message: "Variant updated successfully",
@@ -166,6 +226,7 @@ const updateVariant = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ✅ DELETE Variant by variantId
 const deleteVariant = async (req, res) => {

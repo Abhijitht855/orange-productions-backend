@@ -38,6 +38,7 @@ const variantSchema = new mongoose.Schema({
   price: { type: Number },                           // optional [web:4]
   sizes: { type: [String] },                         // optional [web:4]
   quantity: { type: Number },                        // optional [web:4]
+  catalogue: { type: String },
 });
 
 // Product

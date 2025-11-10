@@ -40,9 +40,10 @@ const {
 router.post(
   "/",
   adminAuth,
-  upload.any(), // supports multiple images fields [web:88][web:81]
+  upload.any(), // handles images + optional PDF
   createVariant
 );
+
 
 // List variants for a product
 router.get("/", getVariants);
@@ -54,7 +55,7 @@ router.get("/:variantSlug", getVariantBySlug);
 router.put(
   "/:variantId",
   adminAuth,
-  upload.any(), // allow replacing images [web:88]
+  upload.any(), // handles images + optional PDF
   updateVariant
 );
 
