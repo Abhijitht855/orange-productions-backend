@@ -144,7 +144,7 @@ const getVariantBySlug = async (req, res) => {
   }
 };
 
-// ✅ UPDATE Variant by variantId
+// UPDATE Variant by variantId
 const updateVariant = async (req, res) => {
   try {
     const { productId, variantId } = req.params;
@@ -160,7 +160,7 @@ const updateVariant = async (req, res) => {
       return res.status(404).json({ success: false, message: "Variant not found" });
     }
 
-    // ✅ Handle files: separate images & catalogue PDF
+    // Handle files: separate images & catalogue PDF
     if (req.files && req.files.length > 0) {
       const imageFiles = req.files.filter(f => f.mimetype.startsWith("image/"));
       const pdfFile = req.files.find(f => f.mimetype === "application/pdf");
@@ -173,13 +173,13 @@ const updateVariant = async (req, res) => {
         variant.images = images;
       }
 
-      // Update / Replace catalogue if PDF provided
+      // Replace catalogue if PDF provided
       if (pdfFile) {
         const catalogueUrl = await uploadFile(pdfFile.buffer, pdfFile.originalname);
         variant.catalogue = catalogueUrl;
       }
     } else if (req.file) {
-      // Single file (backward compatibility)
+      // Backward compatibility
       if (req.file.mimetype.startsWith("image/")) {
         const url = await uploadFile(req.file.buffer, req.file.originalname);
         variant.images = [url];
@@ -189,12 +189,12 @@ const updateVariant = async (req, res) => {
       }
     }
 
-    // ✅ Option to remove existing catalogue manually
+    // Remove catalogue if requested
     if (removeCatalogue === "true") {
       variant.catalogue = undefined;
     }
 
-    // ✅ Update name & slug
+    // Update name & slug
     if (name && name !== variant.name) {
       const newSlug = makeVariantSlug(name);
       if (hasVariantSlug(product, newSlug, variantId)) {
@@ -207,12 +207,46 @@ const updateVariant = async (req, res) => {
       variant.name = name;
     }
 
-    // ✅ Update other optional fields
-    if (about !== undefined) variant.about = about;
-    if (price !== undefined) variant.price = price;
-    if (sizes !== undefined)
-      variant.sizes = Array.isArray(sizes) ? sizes : sizes ? [sizes] : [];
-    if (quantity !== undefined) variant.quantity = quantity;
+    // Update about
+    if (about !== undefined) {
+      variant.about = about;
+    }
+
+    // CLEARABLE: Price → null if "null" string
+    if (price !== undefined) {
+      if (price === "null") {
+        variant.price = null;
+      } else {
+        const num = Number(price);
+        variant.price = isNaN(num) ? variant.price : num; // keep old if invalid
+      }
+    }
+
+    // CLEARABLE: Sizes → [] if "null" string
+    if (sizes !== undefined) {
+      if (sizes === "null") {
+        variant.sizes = [];
+      } else if (Array.isArray(sizes)) {
+        variant.sizes = sizes.filter(s => s && s.trim());
+      } else if (typeof sizes === "string") {
+        variant.sizes = sizes
+          .split(",")
+          .map(s => s.trim())
+          .filter(Boolean);
+      } else {
+        variant.sizes = [];
+      }
+    }
+
+    // CLEARABLE: Quantity → null if "null" string
+    if (quantity !== undefined) {
+      if (quantity === "null") {
+        variant.quantity = null;
+      } else {
+        const num = Number(quantity);
+        variant.quantity = isNaN(num) ? variant.quantity : num;
+      }
+    }
 
     await product.save(); // persist subdoc changes
 

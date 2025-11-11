@@ -10,7 +10,7 @@ const variantRoutes = require("./routes/variantRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const inquiryRoutes = require("./routes/inquiryRoutes");
 const searchRoutes = require("./routes/searchRoutes");
-
+const MediaRoutes = require("./routes/mediaRoutes")
 
 
 const app = express();
@@ -28,6 +28,8 @@ app.use("/api/variants", variantRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/media", MediaRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("🚀 API is running successfully!");
