@@ -41,6 +41,11 @@ const variantSchema = new mongoose.Schema({
   catalogue: { type: String },
 });
 
+const faqSchema = new mongoose.Schema({
+  question: { type: String, required: true },
+  answer: { type: String, required: true },
+},{ _id: false });
+
 // Product
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },            // required [web:4]
@@ -50,6 +55,7 @@ const productSchema = new mongoose.Schema({
   subcategory: { type: mongoose.Schema.Types.ObjectId, ref: "Subcategory", required: true }, // ref [web:13]
   image: String,                                     // optional [web:4]
   variants: [variantSchema],                         // embedded variants [web:19]
+  faqs: [faqSchema],
   createdAt: { type: Date, default: Date.now },      // default [web:13]
 });
 

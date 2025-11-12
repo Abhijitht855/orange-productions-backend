@@ -11,6 +11,8 @@ const adminRoutes = require("./routes/adminRoutes");
 const inquiryRoutes = require("./routes/inquiryRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const MediaRoutes = require("./routes/mediaRoutes")
+const manualReviewRoutes = require("./routes/manualReviewRoutes")
+
 
 
 const app = express();
@@ -29,6 +31,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/media", MediaRoutes);
+app.use("/api/manual-reviews", manualReviewRoutes);
+
 
 
 app.get("/", (req, res) => {
