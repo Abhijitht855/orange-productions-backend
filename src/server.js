@@ -36,7 +36,7 @@ app.use("/api/manual-reviews", manualReviewRoutes);
 
 
 app.get("/", (req, res) => {
-  res.send("🚀 API is running successfully!");
+  res.send({ message:"API is running successfully!"});
 });
 
 // ✅ Connect DB and start server

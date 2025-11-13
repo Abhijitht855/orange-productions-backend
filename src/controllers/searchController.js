@@ -101,7 +101,10 @@ exports.searchAll = async (req, res) => {
     // ✅ Main parallel searches
     const [categories, subcategories] = await Promise.all([
       weightedSearch(Category),
-      weightedSearch(Subcategory),
+      Subcategory.find({ name: regex })
+        .populate("category", "name slug")
+        .limit(10)
+        .lean(),
     ]);
 
     // ✅ Product Search (populate subcategory + category)
