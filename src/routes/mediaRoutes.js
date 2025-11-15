@@ -15,6 +15,8 @@ router.put(
     { name: "section1_video", maxCount: 1 },
     { name: "section2_image", maxCount: 1 },
     { name: "section3_video", maxCount: 1 },
+    { name: "section4_images", maxCount: 10 }
+
   ]),
   updateMediaSections
 );

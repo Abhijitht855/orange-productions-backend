@@ -11,6 +11,10 @@ const mediaSectionSchema = new mongoose.Schema({
   section3: {
     video: String,
   },
+  // NEW: Multiple Images Section
+  section4: {
+    images: [String], // Unlimited images
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("MediaSection", mediaSectionSchema);
