@@ -3,26 +3,28 @@ const router = express.Router();
 
 const upload = require("../middlewares/uploadMiddleware");
 const adminAuth = require("../middlewares/adminAuth");
-const blogController = require("../controllers/blogController");
-
-// Create blog with ImageKit upload
-router.post(
-  "/",
-  adminAuth,
-  upload.single("thumbnail"),
-  blogController.createBlog
-);
-
-router.patch(
-  "/:id",
-  adminAuth,
-  upload.single("thumbnail"),
-  blogController.updateBlog
-);
+const {
+  createBlog,
+  updateBlog,
+  getBlogs,
+  getBlogBySlug,
+  deleteBlog,
+} = require("../controllers/blogController");
 
 
-router.get("/", blogController.getBlogs);
-router.get("/:slug", blogController.getBlogBySlug);
-router.delete("/:id", adminAuth, blogController.deleteBlog);
+// Create blog
+router.post("/", adminAuth, upload.single("thumbnail"), createBlog);
+
+// Update blog
+router.patch("/:id", adminAuth, upload.single("thumbnail"), updateBlog);
+
+// Get all blogs
+router.get("/", getBlogs);
+
+// Get blog by slug
+router.get("/:slug", getBlogBySlug);
+
+// Delete (fixed route)
+router.delete("/delete/:id", adminAuth, deleteBlog);
 
 module.exports = router;

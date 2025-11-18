@@ -9,12 +9,16 @@ exports.createBlog = async (req, res) => {
 
     const slug = slugify(title, { lower: true, strict: true });
 
+    // Slug duplicate check
+    const exists = await Blog.findOne({ slug });
+    if (exists) {
+      return res.status(400).json({ error: "A blog with this title already exists" });
+    }
+
     let thumbnailUrl = null;
 
-    // Upload thumbnail to ImageKit
     if (req.file) {
-      const uploadedUrl = await uploadFile(req.file.buffer, `blog_${Date.now()}`);
-      thumbnailUrl = uploadedUrl;
+      thumbnailUrl = await uploadFile(req.file.buffer, `blog_${Date.now()}`);
     }
 
     const blog = await Blog.create({
@@ -33,19 +37,27 @@ exports.createBlog = async (req, res) => {
   }
 };
 
+
 // Update Blog
 exports.updateBlog = async (req, res) => {
   try {
     const { title, content, excerpt, category, tags } = req.body;
 
-    // Find blog
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ error: "Blog not found" });
 
-    // Update slug if title is changed
+    // If updating title → update slug
     if (title) {
+      const newSlug = slugify(title, { lower: true, strict: true });
+
+      // Check if another blog uses this slug
+      const exists = await Blog.findOne({ slug: newSlug, _id: { $ne: blog._id } });
+      if (exists) {
+        return res.status(400).json({ error: "Another blog already uses this title" });
+      }
+
       blog.title = title;
-      blog.slug = slugify(title, { lower: true, strict: true });
+      blog.slug = newSlug;
     }
 
     if (content) blog.content = content;
@@ -53,22 +65,13 @@ exports.updateBlog = async (req, res) => {
     if (category) blog.category = category;
     if (tags) blog.tags = tags.split(",");
 
-    // If new file uploaded → upload to ImageKit
     if (req.file) {
-      const newThumbnail = await uploadFile(
-        req.file.buffer,
-        `blog_${Date.now()}`
-      );
-      blog.thumbnail = newThumbnail;
+      blog.thumbnail = await uploadFile(req.file.buffer, `blog_${Date.now()}`);
     }
 
     await blog.save();
 
-    res.json({
-      success: true,
-      message: "Blog updated",
-      blog,
-    });
+    res.json({ success: true, message: "Blog updated", blog });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -85,6 +88,7 @@ exports.getBlogs = async (req, res) => {
   }
 };
 
+
 // Get blog by slug
 exports.getBlogBySlug = async (req, res) => {
   try {
@@ -97,7 +101,8 @@ exports.getBlogBySlug = async (req, res) => {
   }
 };
 
-// Delete blog
+
+// Delete Blog
 exports.deleteBlog = async (req, res) => {
   try {
     await Blog.findByIdAndDelete(req.params.id);

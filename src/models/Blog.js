@@ -16,22 +16,14 @@ const blogSchema = new mongoose.Schema(
       type: String,
       required: true
     },
-    excerpt: {
-      type: String
-    },
-    thumbnail: {
-      type: String
-    },
-    category: {
-      type: String
-    },
+    excerpt: String,
+    thumbnail: String,
+    category: String,
     tags: [String],
-
     author: {
       type: String,
       default: "Admin"
     },
-    
     isPublished: {
       type: Boolean,
       default: true
