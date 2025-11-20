@@ -305,9 +305,12 @@ const getProducts = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
+      const total = await Product.countDocuments();
+
     res.status(200).json({
       success: true,
       message: "Products fetched successfully",
+      total,
       data: products,
     });
   } catch (err) {
