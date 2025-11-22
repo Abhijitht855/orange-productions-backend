@@ -13,6 +13,8 @@ const searchRoutes = require("./routes/searchRoutes");
 const MediaRoutes = require("./routes/mediaRoutes")
 const manualReviewRoutes = require("./routes/manualReviewRoutes")
 const blogRoutes = require("./routes/blogRoutes")
+const seoRoutes = require("./routes/seoRoutes")
+
 
 
 
@@ -35,6 +37,7 @@ app.use("/api/search", searchRoutes);
 app.use("/api/media", MediaRoutes);
 app.use("/api/manual-reviews", manualReviewRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use("/api/seo", seoRoutes);
 
 
 
