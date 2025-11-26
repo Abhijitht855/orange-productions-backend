@@ -26,7 +26,7 @@ const inquirySchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: false, // optional
+    required: true, // optional
   },
   message: {
     type: String,
